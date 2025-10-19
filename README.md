@@ -4,6 +4,19 @@ Strapi comes with a full featured [Command Line Interface](https://docs.strapi.i
 
 ### `develop`
 
+Start DB container using Docker 
+
+```
+docker run -d \
+  --name strapi-db \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=MyPassword \
+  -e POSTGRES_DB=strapi \
+  -p 5432:5432 \
+  -v strapi_data:/var/lib/postgresql/data \
+  postgres:15
+```
+
 Start your Strapi application with autoReload enabled. [Learn more](https://docs.strapi.io/dev-docs/cli#strapi-develop)
 
 ```
