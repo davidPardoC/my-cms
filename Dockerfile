@@ -1,31 +1,30 @@
-# Creating multi-stage build for production
+# Etapa de build: compila Strapi
 FROM node:22-alpine AS build
-RUN apk update && apk add --no-cache build-base gcc autoconf automake zlib-dev libpng-dev vips-dev git > /dev/null 2>&1
-ARG NODE_ENV=production
-ENV NODE_ENV=${NODE_ENV}
-
-WORKDIR /opt/
-COPY package.json yarn.lock ./
-RUN yarn global add node-gyp
-RUN yarn config set network-timeout 600000 -g && yarn install --production
-ENV PATH=/opt/node_modules/.bin:$PATH
+RUN apk add --no-cache python3 make g++ vips-dev git
 WORKDIR /opt/app
+COPY package.json yarn.lock ./
+RUN yarn install --frozen-lockfile
 COPY . .
 RUN yarn build
 
-# Creating final production image
+# Etapa final: runtime optimizado
 FROM node:22-alpine
-RUN apk add --no-cache vips-dev
+
+# Instala vips (para sharp) y su-exec (para bajar privilegios)
+RUN apk add --no-cache vips su-exec
+
 ENV NODE_ENV=production
-ENV NODE_ENV=${NODE_ENV}
-WORKDIR /opt/
-COPY --from=build /opt/node_modules ./node_modules
+ENV HOST=0.0.0.0
+
 WORKDIR /opt/app
 COPY --from=build /opt/app ./
-ENV PATH=/opt/node_modules/.bin:$PATH
 
-RUN mkdir -p /opt/app/public/uploads && chown -R node:node /opt/app/public/uploads
-RUN chown -R node:node /opt/app
-USER node
+# Copiamos el entrypoint
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# No definimos USER aquí; el entrypoint se encargará
 EXPOSE 1337
+
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["yarn", "start"]
